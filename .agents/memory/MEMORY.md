@@ -1,0 +1,4 @@
+- [Password reset controller split](password-reset-controller.md) — forgotPassword/resetPassword live in verification.controller.ts (not auth.controller.ts); routes import from there.
+- [TSX cache stale code issue](tsx-cache-issue.md) — tsx serves stale compiled code from /tmp cache; fix by adding --no-cache to workflow command and killing stuck processes.
+- [Vite 6 middleware host check](vite6-middleware-host-check.md) — Vite 6.4+ returns 426 for external hosts in middleware mode; rewrite Host header to localhost before vite.middlewares.
+- [VPS Access Rule](vps-rule.md) — NEVER touch the VPS unless the user explicitly says so.

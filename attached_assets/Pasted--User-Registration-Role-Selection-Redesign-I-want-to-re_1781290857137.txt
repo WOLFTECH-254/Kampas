@@ -1,0 +1,83 @@
+### User Registration & Role Selection Redesign
+
+I want to redesign the user onboarding and account creation flow.
+
+#### Current Flow
+
+Currently, users are required to choose whether they are a Buyer or Seller during signup.
+
+#### New Flow
+
+Remove role selection from the signup page completely.
+
+Instead:
+
+1. Users sign up using their email and password.
+2. A verification email is sent to the user's email address using Brevo.
+3. The user clicks the verification link.
+4. After successful verification, the user is automatically redirected to the login page.
+5. Once logged in for the first time, the user is taken through an onboarding survey.
+
+#### Onboarding Survey
+
+The first and most important question should determine the user's account type:
+
+**What would you like to use the platform as?**
+
+* Buyer
+* Seller
+* Both Buyer and Seller
+
+Based on the selection:
+
+**Buyer**
+
+* User receives access to all buyer-related features, pages, permissions, and dashboards.
+
+**Seller**
+
+* User receives access to all seller-related features, pages, permissions, and dashboards.
+
+**Both Buyer and Seller**
+
+* User receives access to both buyer and seller functionality and can switch between both experiences seamlessly.
+
+The selected role(s) should be stored in the database and can be updated later from account settings if desired.
+
+---
+
+### Brevo Integration
+
+Brevo should be the primary email service provider.
+
+Implement:
+
+* Account verification emails
+* Password reset emails
+* Welcome emails
+* Promotional and marketing campaigns
+* System notifications
+* Transactional notifications
+* Security alerts
+* Seller-related announcements
+* Buyer-related announcements
+
+Please design the email architecture so it can scale for future communication needs.
+
+---
+
+### Deliverables
+
+1. Design the complete database structure required for this onboarding flow.
+2. Design the authentication and verification flow.
+3. Define role and permission management for Buyer, Seller, and Both.
+4. List all Brevo requirements, including:
+
+   * API keys needed
+   * Sender identities/domains
+   * Webhooks
+   * Templates
+   * Contact lists
+   * Marketing automation setup
+5. Explain the complete implementation plan before writing code.
+6. Identify all files, routes, database models, pages, and APIs that must be updated.

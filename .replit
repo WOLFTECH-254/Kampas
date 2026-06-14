@@ -1,0 +1,70 @@
+modules = ["nodejs-20", "bash", "web"]
+[agent]
+expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
+
+[nix]
+channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend API"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "Backend API"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && DATABASE_URL='file:./prisma/dev.db' npx tsx --no-cache src/index.ts"
+waitForPort = 8000
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[[ports]]
+localPort = 24678
+externalPort = 3000
+
+[deployment]
+deploymentTarget = "vm"
+run = ["bash", "-c", "cd backend && DATABASE_URL='file:./dev.db' node dist/index.js & node dist/server.cjs"]
+build = ["bash", "-c", "npm run build && cd backend && DATABASE_URL='file:./dev.db' npx prisma generate"]
+
+[userenv]
+
+[userenv.shared]
+APP_URL = "https://4bec2b93-c5d1-4744-834c-598460bdbe7a-00-jm4zhs2h7caw.janeway.replit.dev"
+JWT_SECRET = "8569772e2b8336d9e66c6f0ba72a1ed13f11c8b822e16c19b933645e0ad9a156"

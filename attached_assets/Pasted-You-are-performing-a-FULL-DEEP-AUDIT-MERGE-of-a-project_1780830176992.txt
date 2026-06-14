@@ -1,0 +1,338 @@
+You are performing a FULL DEEP AUDIT + MERGE of a project called Kampas (Kenyan student marketplace).
+
+IMPORTANT:
+Do NOT assume previous work is complete.
+Do NOT simply merge files.
+Perform a complete repository-wide analysis and identify every missing feature, incomplete flow, broken integration, missing backend endpoint, missing frontend page connection, missing database field, missing validation, missing UI component, and missing business requirement.
+
+# PHASE 1 — DEEP AUDIT
+
+Before making any changes:
+
+1. Scan the entire repository.
+
+2. Analyze:
+
+   * Backend routes
+   * Controllers
+   * Services
+   * Prisma schema
+   * Database seeders
+   * Middleware
+   * React pages
+   * Components
+   * Context providers
+   * API integrations
+   * Role-based routing
+   * Navigation menus
+   * Forms
+   * Dashboards
+   * Payment flows
+   * Event flows
+   * Housing flows
+   * Notification flows
+   * Chat flows
+   * Wallet flows
+   * Seller flows
+   * Admin flows
+
+3. Generate a COMPLETE GAP REPORT showing:
+
+   * Missing features
+   * Half-completed features
+   * Dead links
+   * Unused components
+   * Missing API integrations
+   * Missing database columns
+   * Missing validations
+   * Missing mobile responsiveness
+   * Missing role permissions
+   * Missing error handling
+   * Missing loading states
+   * Missing empty states
+   * Missing analytics tracking
+
+4. Do NOT stop at obvious features.
+   Trace every frontend action to its backend endpoint and database model.
+
+# PHASE 2 — MERGE EXISTING VERSIONS
+
+VERSION A (BASE SYSTEM)
+
+Keep ALL backend functionality intact:
+
+* Express
+* TypeScript
+* Prisma
+* SQLite
+* JWT auth
+* Email OTP verification
+
+BUYER:
+
+* Wallet
+* Paystack
+* M-Pesa
+* Cart
+* Orders
+* Wishlist
+* Addresses
+* Notifications
+* Chats
+* Events
+* Housing
+* Refunds
+* Disputes
+* Reviews
+* Settings
+
+SELLER:
+
+* Store
+* Products CRUD
+* Analytics
+* Ads
+* Promotions
+* Delivery zones
+* Payouts
+* KYC verification
+
+ADMIN:
+
+* User management
+* Seller verification
+* Product moderation
+* Ad approvals
+* KYC gateway
+* Platform analytics
+* Dispute resolution
+
+FRONTEND:
+
+* Marketplace
+* BuyerDashboard
+* SellerDashboard
+* AdminDashboard
+* Events
+* Chats
+* Notifications
+* Profile
+
+VERSION B (NEW FEATURES)
+
+Merge ALL of these:
+
+1. FlashSaleStories
+2. MapView
+3. CampusMap
+4. Enhanced Housing Page
+5. LocationContext
+6. Receipt Download
+7. Recommendation Engine
+8. Event Ticket Component
+9. Footer Component
+
+Required integrations:
+
+* LocationContext wraps App.tsx
+* CampusMap route = /map
+* CampusMap added to MainLayout navigation
+* FlashSaleStories shown at top of Explore/Marketplace
+* MapView embedded into Housing page
+* Receipt download added to Buyer order details
+* Ticket component connected to Events
+* Footer added to MainLayout
+
+# PHASE 3 — KAMPAS PLATFORM IMPROVEMENTS
+
+Kampas serves:
+
+* Universities
+* TVETs
+* KMTC campuses
+* Colleges
+
+Audit and improve all onboarding flows.
+
+CHECK FOR:
+
+1. SIGNUP ISSUES
+
+   * Missing location verification
+   * Missing GPS capture
+   * Missing county selection
+   * Missing campus validation
+
+2. CAMPUS DATA
+
+   * Expand campus dropdown massively
+   * Include Universities
+   * Include TVET institutions
+   * Include KMTC campuses
+   * Include Teacher Training Colleges
+   * Include major private colleges
+
+3. REFERRAL SYSTEM
+
+   * Verify seller referral flow exists
+   * Verify referral codes generate
+   * Verify referral tracking works
+   * Verify referral rewards work
+   * Add if missing
+
+4. RECEIPTS
+
+   * Verify receipt generation
+   * Verify receipt download
+   * Verify order receipts contain:
+
+     * order number
+     * buyer
+     * seller
+     * products
+     * quantity
+     * amount
+     * payment method
+     * timestamp
+
+5. LOCATION FEATURES
+
+   * Verify user location is stored
+   * Verify housing distance calculations
+   * Verify map markers work
+   * Verify campus recommendations work
+
+6. MARKETPLACE
+
+   * Verify featured products
+   * Verify flash sales
+   * Verify seller stores
+   * Verify search filters
+   * Verify categories
+
+7. EVENTS
+
+   * Verify event tickets
+   * Verify QR generation if supported
+   * Verify ticket downloads
+
+8. HOUSING
+
+   * Verify image carousel
+   * Verify map integration
+   * Verify nearby places
+   * Verify recommendations
+
+9. CHATS
+
+   * Verify polling/websocket logic
+   * Verify unread counts
+   * Verify notifications
+
+10. ADMIN
+
+* Verify moderation tools
+* Verify dispute workflows
+* Verify seller verification flow
+* Verify platform analytics
+
+# PHASE 4 — DEPENDENCIES
+
+Install and configure any missing packages:
+
+* motion/react
+* leaflet
+* react-leaflet
+* html-to-image
+* @vis.gl/react-google-maps
+
+Fix:
+
+* imports
+* type errors
+* route errors
+* build errors
+* Prisma issues
+* frontend compile issues
+
+# PHASE 5 — ROLE ROUTING VALIDATION
+
+Verify:
+
+BUYER
+→ /explore
+
+SELLER
+→ /dashboard/seller
+
+ADMIN
+→ /admin
+
+Confirm redirects work after login.
+
+# PHASE 6 — DATABASE SEEDING
+
+Create working seed data:
+
+ADMIN
+
+* role ADMIN
+
+SELLER
+
+* role SELLER
+* verified store
+* 3 products
+
+BUYER
+
+* role BUYER
+* wallet balance KES 2,000
+
+IMPORTANT:
+Actually create the seed records.
+Do not just describe them.
+
+# PHASE 7 — FINAL REPORT
+
+At the end provide:
+
+1. Full Gap Report
+2. All fixes applied
+3. New features added
+4. Remaining issues (if any)
+5. Database seed credentials
+
+Format credentials exactly:
+
+ADMIN
+Email:
+Password:
+
+SELLER
+Email:
+Password:
+
+BUYER
+Email:
+Password:
+
+6. URLs to test
+
+Buyer Dashboard:
+Seller Dashboard:
+Admin Dashboard:
+Marketplace:
+Campus Map:
+Housing:
+Events:
+
+Backend:
+http://localhost:8000
+
+Frontend:
+http://localhost:3005
+
+IMPORTANT:
+Do not stop until every page, route, API endpoint, and database model has been audited and cross-checked.
+Provide evidence for every missing feature found and every fix applied.

@@ -1,0 +1,117 @@
+### Buyer Personalization & Recommendation System
+
+I want to implement a personalized recommendation system for buyers.
+
+#### Buyer Onboarding Survey
+
+After a user selects **Buyer** or **Buyer & Seller** during onboarding, present an optional preference survey.
+
+The survey should contain approximately 5 questions designed to understand the buyer's interests and help personalize their experience.
+
+Example questions:
+
+1. Which product categories are you most interested in?
+
+   * Electronics
+   * Fashion
+   * Books
+   * Housing & Rentals
+   * Events & Tickets
+   * Services
+   * Food & Delivery
+   * Other
+
+2. Which services are you most likely to use?
+
+   * Tutoring
+   * Graphic Design
+   * Programming
+   * Transport
+   * Photography
+   * Cleaning
+   * Other
+
+3. What is your typical shopping budget?
+
+   * Low Budget
+   * Medium Budget
+   * High Budget
+
+4. How often do you shop on marketplaces?
+
+   * Daily
+   * Weekly
+   * Monthly
+   * Occasionally
+
+5. What are you currently looking for?
+
+   * Products
+   * Services
+   * Housing
+   * Events
+   * Multiple Categories
+
+All survey questions are optional. Users may skip the survey entirely and continue using the platform.
+
+---
+
+### Recommendation Algorithm
+
+The recommendation engine should not rely only on the survey.
+
+The system should continuously learn from user behavior, including:
+
+* Search history
+* Product views
+* Service views
+* Listing clicks
+* Wishlist additions
+* Cart additions
+* Purchases
+* Seller follows
+* Likes and reactions
+* Shares
+* Time spent viewing listings
+* Categories frequently visited
+
+The survey should only provide initial recommendation signals for new users (cold start problem).
+
+As users interact with the platform, behavioral data should gradually become more important than survey responses.
+
+---
+
+### Recommendation Scoring
+
+Create an interest scoring system where each category accumulates points based on user actions.
+
+Example:
+
+* Survey category selected = +10 points
+* Search in category = +5 points
+* Listing click = +3 points
+* Wishlist add = +8 points
+* Cart add = +10 points
+* Purchase = +20 points
+* Follow seller = +10 points
+
+The system should continuously update these scores and use them to rank content shown on:
+
+* Home page
+* Recommended products
+* Recommended services
+* Suggested sellers
+* Personalized notifications
+* Promotional campaigns
+
+---
+
+### Additional Requirements
+
+1. Design the database tables required for tracking user interests.
+2. Design a scalable recommendation architecture.
+3. Explain how the scoring algorithm works.
+4. Explain how new users receive recommendations before enough behavioral data exists.
+5. Ensure recommendations update automatically as user behavior changes.
+6. Optimize the system for future AI/ML-based recommendations.
+7. Provide a complete implementation plan before writing code.

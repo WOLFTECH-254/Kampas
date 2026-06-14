@@ -1,0 +1,6 @@
+{
+  "name": "Kampas",
+  "description": "The digital ecosystem for Kenyan students",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

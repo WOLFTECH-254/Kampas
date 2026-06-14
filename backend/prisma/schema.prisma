@@ -1,0 +1,699 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  password      String
+  campus        String?
+  role          String   @default("BUYER")
+  avatar        String?
+  walletBalance Float    @default(0)
+  sellerBalance Float    @default(0)
+  isVerified          Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  onboardingCompleted Boolean  @default(false)
+  referralCode  String?  @unique
+  referredById  String?
+  referredBy    User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals     User[]   @relation("Referrals")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions             Session[]
+  addresses            Address[]
+  paymentMethods       PaymentMethod[]
+  walletTransactions   WalletTransaction[]
+  cart                 Cart?
+  wishlistItems        WishlistItem[]
+  buyerOrders          Order[]           @relation("BuyerOrders")
+  sellerOrders         Order[]           @relation("SellerOrders")
+  sellerProducts       Product[]         @relation("SellerProducts")
+  productReports       ProductReport[]
+  refunds              Refund[]
+  disputesRaised       Dispute[]         @relation("DisputesRaised")
+  following            Follow[]          @relation("Following")
+  followers            Follow[]          @relation("Followers")
+  reviewsGiven         Review[]          @relation("ReviewsGiven")
+  reviewsReceived      Review[]          @relation("ReviewsReceived")
+  buyerChats           Chat[]            @relation("BuyerChats")
+  sellerChats          Chat[]            @relation("SellerChats")
+  messagesSent         Message[]         @relation("MessagesSent")
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference?
+  activityLogs         ActivityLog[]
+  settings             BuyerSettings?
+  housings             Housing[]
+  housingSaves         HousingSave[]
+  eventTickets         EventTicket[]
+  eventRSVPs           EventRSVP[]
+  uploads              Upload[]
+  organizedEvents      Event[]
+  otps                 OTP[]
+  store                Store?
+  ads                  Ad[]
+  deliveryZones        DeliveryZone[]
+  promotions           Promotion[]
+  sellerSettings       SellerSettings?
+  sellerVerification   SellerVerification?
+  payouts              Payout[]
+  preferences          UserPreferences?
+  interestScores       InterestScore[]
+  communityMessages    CommunityMessage[] @relation("CommunityMessages")
+  supportTickets       SupportTicket[]    @relation("SupportTickets")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  device       String?
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model Address {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label                String
+  hostelName           String?
+  roomNumber           String?
+  latitude             Float?
+  longitude            Float?
+  campus               String?
+  deliveryInstructions String?
+  isDefault            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  orders               Order[]
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  label     String?
+  token     String?
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  amount      Float
+  balance     Float
+  reference   String?
+  description String?
+  status      String   @default("COMPLETED")
+  createdAt   DateTime @default(now())
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  icon      String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id            String          @id @default(cuid())
+  sellerId      String
+  seller        User            @relation("SellerProducts", fields: [sellerId], references: [id])
+  listingType   String          @default("PRODUCT")
+  title         String
+  description   String?
+  price         Float
+  campus        String
+  condition     String          @default("NEW")
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id])
+  images        ProductImage[]
+  stock         Int             @default(1)
+  isActive      Boolean         @default(true)
+  isFeatured    Boolean         @default(false)
+  views         Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  wishlistItems WishlistItem[]
+  reports       ProductReport[]
+  reviews       Review[]
+  activityLogs  ActivityLog[]
+  ads           Ad[]
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ProductReport {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  reason    String
+  details   String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id            String          @id @default(cuid())
+  buyerId       String
+  buyer         User            @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId      String
+  seller        User            @relation("SellerOrders", fields: [sellerId], references: [id])
+  addressId     String?
+  address       Address?        @relation(fields: [addressId], references: [id])
+  items         OrderItem[]
+  status        String          @default("PENDING")
+  total         Float
+  deliveryFee   Float           @default(0)
+  paymentMethod String          @default("WALLET")
+  paymentStatus String          @default("PENDING")
+  trackingInfo  OrderTracking[]
+  refund        Refund?
+  dispute       Dispute?
+  review        Review?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+}
+
+model OrderTracking {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+}
+
+model Refund {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  reason    String
+  amount    Float
+  status    String   @default("PENDING")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Dispute {
+  id          String            @id @default(cuid())
+  orderId     String            @unique
+  order       Order             @relation(fields: [orderId], references: [id])
+  raisedById  String
+  raisedBy    User              @relation("DisputesRaised", fields: [raisedById], references: [id])
+  reason      String
+  description String?
+  status      String            @default("OPEN")
+  resolution  String?
+  evidence    DisputeEvidence[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model DisputeEvidence {
+  id        String   @id @default(cuid())
+  disputeId String
+  dispute   Dispute  @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  follower   User     @relation("Following", fields: [followerId], references: [id])
+  sellerId   String
+  seller     User     @relation("Followers", fields: [sellerId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([followerId, sellerId])
+}
+
+model Review {
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  order      Order         @relation(fields: [orderId], references: [id])
+  reviewerId String
+  reviewer   User          @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  sellerId   String
+  seller     User          @relation("ReviewsReceived", fields: [sellerId], references: [id])
+  productId  String
+  product    Product       @relation(fields: [productId], references: [id])
+  rating     Int
+  comment    String?
+  images     ReviewImage[]
+  createdAt  DateTime      @default(now())
+}
+
+model ReviewImage {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model Chat {
+  id          String    @id @default(cuid())
+  buyerId     String
+  buyer       User      @relation("BuyerChats", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User      @relation("SellerChats", fields: [sellerId], references: [id])
+  messages    Message[]
+  lastMessage String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([buyerId, sellerId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation("MessagesSent", fields: [senderId], references: [id])
+  content   String
+  type      String   @default("TEXT")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  data      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Boolean  @default(true)
+  chats     Boolean  @default(true)
+  marketing Boolean  @default(false)
+  events    Boolean  @default(true)
+  housing   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  query     String?
+  metadata  String?
+  createdAt DateTime @default(now())
+}
+
+model BuyerSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  darkMode  Boolean  @default(false)
+  language  String   @default("en")
+  privacy   String   @default("PUBLIC")
+  updatedAt DateTime @updatedAt
+}
+
+model Housing {
+  id          String         @id @default(cuid())
+  ownerId     String
+  owner       User           @relation(fields: [ownerId], references: [id])
+  title       String
+  description String?
+  price       Float
+  campus      String
+  hostelName  String?
+  roomType    String?
+  amenities   String?
+  latitude    Float?
+  longitude   Float?
+  images      HousingImage[]
+  isAvailable Boolean        @default(true)
+  isVerified  Boolean        @default(false)
+  saves       HousingSave[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model HousingImage {
+  id        String   @id @default(cuid())
+  housingId String
+  housing   Housing  @relation(fields: [housingId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model HousingSave {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  housingId String
+  housing   Housing  @relation(fields: [housingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, housingId])
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  organizerId String
+  organizer   User          @relation(fields: [organizerId], references: [id])
+  title       String
+  description String?
+  campus      String
+  venue       String?
+  startDate   DateTime
+  endDate     DateTime?
+  price       Float         @default(0)
+  capacity    Int?
+  image       String?
+  isActive    Boolean       @default(true)
+  tickets     EventTicket[]
+  rsvps       EventRSVP[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model EventTicket {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  qrCode    String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+}
+
+model EventRSVP {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  url       String
+  type      String
+  size      Int?
+  mimeType  String?
+  createdAt DateTime @default(now())
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  type      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Store {
+  id             String   @id @default(cuid())
+  sellerId       String   @unique
+  seller         User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  banner         String?
+  logo           String?
+  theme          String   @default("pink")
+  returnPolicy   String?
+  deliveryPolicy String?
+  isOpen         Boolean  @default(true)
+  vacationMode   Boolean  @default(false)
+  categories     String?
+  socialLinks    String?
+  operatingHours String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Ad {
+  id           String   @id @default(cuid())
+  sellerId     String
+  seller       User     @relation(fields: [sellerId], references: [id])
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id])
+  title        String
+  description  String?
+  image        String?
+  targetCampus String?
+  budget       Float    @default(0)
+  spent        Float    @default(0)
+  impressions  Int      @default(0)
+  clicks       Int      @default(0)
+  status       String   @default("PENDING")
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model DeliveryZone {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id])
+  name      String
+  campus    String
+  fee       Float    @default(0)
+  minOrder  Float    @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Promotion {
+  id        String    @id @default(cuid())
+  sellerId  String
+  seller    User      @relation(fields: [sellerId], references: [id])
+  code      String    @unique
+  type      String
+  value     Float
+  minOrder  Float     @default(0)
+  maxUses   Int?
+  uses      Int       @default(0)
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model SellerSettings {
+  id           String   @id @default(cuid())
+  sellerId     String   @unique
+  seller       User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  newOrders    Boolean  @default(true)
+  payments     Boolean  @default(true)
+  reviews      Boolean  @default(true)
+  lowStock     Boolean  @default(true)
+  vacationMode Boolean  @default(false)
+  storeVisible Boolean  @default(true)
+  autoConfirm  Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model SellerVerification {
+  id          String    @id @default(cuid())
+  sellerId    String    @unique
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  fullName    String?
+  idNumber    String?
+  idFront     String?
+  idBack      String?
+  businessDoc String?
+  selfie      String?
+  status      String    @default("PENDING")
+  notes       String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+  amount      Float
+  phone       String?
+  method      String   @default("MPESA")
+  status      String   @default("PENDING")
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interestedCats  String?
+  likelyServices  String?
+  budgetRange     String?
+  shopFrequency   String?
+  lookingFor      String?
+  surveyCompleted Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InterestScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  score     Float    @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category])
+}
+
+model CommunityMessage {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  user      User     @relation("CommunityMessages", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("SupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  category  String   @default("GENERAL")
+  status    String   @default("OPEN")
+  priority  String   @default("NORMAL")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  SupportMessage[]
+}
+
+model SupportMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId   String
+  senderRole String        @default("USER")
+  message    String
+  createdAt  DateTime      @default(now())
+}
