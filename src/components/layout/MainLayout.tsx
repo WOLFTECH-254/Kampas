@@ -35,10 +35,11 @@ export default function MainLayout() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-white text-gray-900 font-sans pb-20 md:pb-0 flex flex-col">
+    // ── Whole app is locked to the viewport — nothing here scrolls. ──────────
+    <div className="h-screen w-screen overflow-hidden bg-white text-gray-900 font-sans flex flex-col">
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-pink-200 bg-white/80 backdrop-blur-xl">
+      {/* Header — a normal flex child now, no sticky/fixed needed, so it can never detach */}
+      <header className="w-full flex-shrink-0 border-b border-pink-200 bg-white/80 backdrop-blur-xl z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
 
           <div className="flex items-center gap-4">
@@ -90,9 +91,11 @@ export default function MainLayout() {
         </div>
       </header>
 
-      <div className="flex flex-1 min-w-0 overflow-x-hidden">
-        {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 fixed left-0 top-16 bottom-0 border-r border-pink-200 bg-white/50 p-4 gap-1 overflow-y-auto">
+      {/* ── Body row fills the remaining viewport height exactly. ─────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Sidebar — a normal flex child, full height of the row, never moves */}
+        <aside className="hidden md:flex flex-col w-64 flex-shrink-0 h-full border-r border-pink-200 bg-white/50 p-4 gap-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -140,11 +143,14 @@ export default function MainLayout() {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0 w-full overflow-x-hidden md:ml-64 min-h-[calc(100vh-4rem)] flex flex-col">
-          <div className="flex-1">
-            <Outlet />
+        {/* Main — this is the ONLY thing that scrolls now */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="min-h-full flex flex-col pb-20 md:pb-0">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <Footer />
           </div>
-          <Footer />
         </main>
       </div>
 

@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-const email = 'britonkiplangat@0gmail.com';
+const email = 'wolfsilent906@gmail.com';
 const user = await prisma.user.findUnique({ where: { email } });
 
 if (!user) {
