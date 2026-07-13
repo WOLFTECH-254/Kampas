@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 dotenv.config();
 
 import authRoutes    from './routes/auth.routes.js';
@@ -21,7 +22,42 @@ import eventRoutes   from './routes/event.routes.js';
 const app  = express();
 const PORT = process.env.PORT || 8000;
 
-app.use(cors({ origin: true, credentials: true }));
+const configuredOrigins = [process.env.CORS_ORIGINS, process.env.APP_URL]
+  .filter(Boolean)
+  .join(',')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const developmentOrigins = process.env.NODE_ENV === 'production'
+  ? []
+  : ['http://localhost:5000', 'http://127.0.0.1:5000'];
+const allowedOrigins = new Set([...configuredOrigins, ...developmentOrigins]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error('Origin not allowed by CORS'));
+  },
+  credentials: true,
+}));
+
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-paystack-signature'];
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || typeof signature !== 'string' || !Buffer.isBuffer(req.body)) return res.sendStatus(401);
+
+  const expected = crypto.createHmac('sha512', secret).update(req.body).digest('hex');
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return res.sendStatus(401);
+  }
+  try {
+    req.body = JSON.parse(req.body.toString('utf8'));
+  } catch {
+    return res.sendStatus(400);
+  }
+  return paystackWebhook(req as any, res);
+});
+
 app.use(express.json());
 
 // Serve uploaded files (KYC images, etc.)
@@ -40,10 +76,6 @@ app.use('/api/events',  eventRoutes);
 app.use('/api/support', supportRoutes);
 
 // Paystack webhook — must be raw body
-app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  if (Buffer.isBuffer(req.body)) req.body = JSON.parse(req.body.toString());
-  paystackWebhook(req as any, res);
-});
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', message: '🚀 Kampas API running' }));
 

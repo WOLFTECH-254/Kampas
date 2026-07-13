@@ -145,6 +145,10 @@ export const verifyMpesaTopup = async (req: AuthRequest, res: Response) => {
       where: { reference, userId: req.user!.id },
     });
 
+    if (!existingTx) {
+      return res.status(404).json({ success: false, message: 'Payment transaction not found' });
+    }
+
     if (existingTx?.status === 'COMPLETED') {
       const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { walletBalance: true } });
       return res.json({
@@ -168,23 +172,18 @@ export const verifyMpesaTopup = async (req: AuthRequest, res: Response) => {
     if (status === 'success') {
       const paidAmount = tx.amount / 100; // convert from kobo back to KES
 
-      // Credit wallet
-      const updatedUser = await prisma.user.update({
-        where: { id: req.user!.id },
-        data:  { walletBalance: { increment: paidAmount } },
-        select: { walletBalance: true },
-      });
+      if (tx.metadata?.userId !== req.user!.id || tx.metadata?.type !== 'WALLET_TOPUP') {
+        return res.status(400).json({ success: false, message: 'Payment does not belong to this wallet' });
+      }
 
-      // Update transaction record
-      await prisma.walletTransaction.updateMany({
-        where: { reference, userId: req.user!.id },
-        data: {
-          amount:      paidAmount,
-          balance:     updatedUser.walletBalance,
-          status:      'COMPLETED',
-          description: `M-Pesa top-up of KSH ${paidAmount} (ref: ${reference})`,
-        },
+      const updatedUser = await prisma.$transaction(async db => {
+        const claimed = await db.walletTransaction.updateMany({ where: { id: existingTx.id, status: 'PENDING' }, data: { status: 'PROCESSING' } });
+        if (claimed.count !== 1) return null;
+        const user = await db.user.update({ where: { id: req.user!.id }, data: { walletBalance: { increment: paidAmount } }, select: { walletBalance: true } });
+        await db.walletTransaction.update({ where: { id: existingTx.id }, data: { amount: paidAmount, balance: user.walletBalance, status: 'COMPLETED', description: `M-Pesa top-up of KSH ${paidAmount} (ref: ${reference})` } });
+        return user;
       });
+      if (!updatedUser) return res.json({ success: true, message: 'Payment is already being processed.', data: { status: 'pending' } });
 
       // Send notification
       await prisma.notification.create({
@@ -241,22 +240,17 @@ export const paystackWebhook = async (req: AuthRequest, res: Response) => {
 
       if (!userId) return res.sendStatus(200);
 
-      // Check not already processed
-      const existing = await prisma.walletTransaction.findFirst({
-        where: { reference, status: 'COMPLETED' },
+      if (metadata?.type !== 'WALLET_TOPUP') return res.sendStatus(200);
+      const transaction = await prisma.walletTransaction.findFirst({ where: { reference, userId } });
+      if (!transaction) return res.sendStatus(200);
+      const updatedUser = await prisma.$transaction(async db => {
+        const claimed = await db.walletTransaction.updateMany({ where: { id: transaction.id, status: 'PENDING' }, data: { status: 'PROCESSING' } });
+        if (claimed.count !== 1) return null;
+        const user = await db.user.update({ where: { id: userId }, data: { walletBalance: { increment: paidKES } }, select: { walletBalance: true } });
+        await db.walletTransaction.update({ where: { id: transaction.id }, data: { amount: paidKES, balance: user.walletBalance, status: 'COMPLETED' } });
+        return user;
       });
-      if (existing) return res.sendStatus(200);
-
-      const updatedUser = await prisma.user.update({
-        where:  { id: userId },
-        data:   { walletBalance: { increment: paidKES } },
-        select: { walletBalance: true },
-      });
-
-      await prisma.walletTransaction.updateMany({
-        where: { reference, userId },
-        data:  { amount: paidKES, balance: updatedUser.walletBalance, status: 'COMPLETED' },
-      });
+      if (!updatedUser) return res.sendStatus(200);
 
       await prisma.notification.create({
         data: {

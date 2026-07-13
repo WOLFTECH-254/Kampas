@@ -33,6 +33,11 @@ export const placeOrder = async (req: AuthRequest, res: Response) => {
     const products = await prisma.product.findMany({ where: { id: { in: productIds }, isActive: true } });
     if (products.length !== productIds.length) return res.status(400).json({ success: false, message: 'One or more products unavailable' });
 
+    if (addressId) {
+      const address = await prisma.address.findFirst({ where: { id: addressId, userId: req.user!.id } });
+      if (!address) return res.status(400).json({ success: false, message: 'Delivery address not found' });
+    }
+
     // Group by seller (one order per seller)
     const bySeller: Record<string, typeof items> = {};
     for (const item of items) {
@@ -51,28 +56,42 @@ export const placeOrder = async (req: AuthRequest, res: Response) => {
       }, 0);
       const total = subtotal + DELIVERY_FEE;
 
-      if (paymentMethod === 'WALLET') {
-        const buyer = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { walletBalance: true } });
-        if (!buyer || buyer.walletBalance < total) return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
-        await prisma.user.update({ where: { id: req.user!.id }, data: { walletBalance: { decrement: total } } });
-      }
+      const order = await prisma.$transaction(async db => {
+        for (const item of sellerItems) {
+          const reserved = await db.product.updateMany({
+            where: { id: item.productId, sellerId, isActive: true, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+          if (reserved.count !== 1) throw new Error('INSUFFICIENT_STOCK');
+        }
 
-      const order = await prisma.order.create({
-        data: {
-          buyerId: req.user!.id, sellerId, addressId, total, deliveryFee: DELIVERY_FEE,
-          paymentMethod, paymentStatus: paymentMethod === 'WALLET' ? 'PAID' : 'PENDING',
-          items: { create: sellerItems.map(i => ({ productId: i.productId, quantity: i.quantity, price: products.find(p => p.id === i.productId)!.price })) },
-          trackingInfo: { create: { status: 'PENDING', note: 'Order placed' } },
-        },
-        include: { items: { include: { product: true } }, trackingInfo: true },
-      });
+        let balance: number | undefined;
+        if (paymentMethod === 'WALLET') {
+          const paid = await db.user.updateMany({
+            where: { id: req.user!.id, walletBalance: { gte: total } },
+            data: { walletBalance: { decrement: total } },
+          });
+          if (paid.count !== 1) throw new Error('INSUFFICIENT_BALANCE');
+          balance = (await db.user.findUnique({ where: { id: req.user!.id }, select: { walletBalance: true } }))!.walletBalance;
+        }
 
-      if (paymentMethod === 'WALLET') {
-        const updated = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { walletBalance: true } });
-        await prisma.walletTransaction.create({
-          data: { userId: req.user!.id, type: 'PAYMENT', amount: -total, balance: updated!.walletBalance, description: `Payment for order #${order.id.slice(-6).toUpperCase()}` },
+        const created = await db.order.create({
+          data: {
+            buyerId: req.user!.id, sellerId, addressId, total, deliveryFee: DELIVERY_FEE,
+            paymentMethod, paymentStatus: paymentMethod === 'WALLET' ? 'PAID' : 'PENDING',
+            items: { create: sellerItems.map(i => ({ productId: i.productId, quantity: i.quantity, price: products.find(p => p.id === i.productId)!.price })) },
+            trackingInfo: { create: { status: 'PENDING', note: 'Order placed' } },
+          },
+          include: { items: { include: { product: true } }, trackingInfo: true },
         });
-      }
+
+        if (paymentMethod === 'WALLET') {
+          await db.walletTransaction.create({
+            data: { userId: req.user!.id, type: 'PAYMENT', amount: -total, balance: balance!, description: `Payment for order #${created.id.slice(-6).toUpperCase()}` },
+          });
+        }
+        return created;
+      });
 
       await prisma.notification.create({
         data: { userId: req.user!.id, type: 'ORDER', title: 'Order Placed!', body: `Your order #${order.id.slice(-6).toUpperCase()} has been placed.` },
@@ -88,6 +107,8 @@ export const placeOrder = async (req: AuthRequest, res: Response) => {
     return res.status(201).json({ success: true, message: 'Order placed successfully', data: { orders } });
   } catch (err) {
     if (err instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: err.errors });
+    if (err instanceof Error && err.message === 'INSUFFICIENT_STOCK') return res.status(400).json({ success: false, message: 'One or more products are out of stock' });
+    if (err instanceof Error && err.message === 'INSUFFICIENT_BALANCE') return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     console.error(err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }

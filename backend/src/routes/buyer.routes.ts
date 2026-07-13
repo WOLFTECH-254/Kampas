@@ -1,8 +1,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { getProfile, updateProfile, changeRole, getWallet, getWalletTransactions, topupWallet, withdrawWallet } from '../controllers/buyer.controller.js';
-import { initiateMpesaTopup, initiateCardTopup, verifyMpesaTopup, getTransactions } from '../controllers/payment.controller.js';
+import { getProfile, updateProfile, changeRole, getWallet, getWalletTransactions, withdrawWallet } from '../controllers/buyer.controller.js';
+import { initiateMpesaTopup, initiateCardTopup, verifyMpesaTopup } from '../controllers/payment.controller.js';
 import { getCart, addToCart, updateCartItem, removeFromCart, clearCart } from '../controllers/cart.controller.js';
 import { placeOrder, getOrders, getOrder, cancelOrder, trackOrder, reviewOrder, requestRefund, getRefunds, raiseDispute, getDisputes } from '../controllers/order.controller.js';
 import { getAddresses, addAddress, updateAddress, deleteAddress } from '../controllers/address.controller.js';
@@ -23,11 +23,9 @@ r.put('/role',     changeRole);
 // Wallet
 r.get('/wallet', getWallet);
 r.get('/wallet/transactions', getWalletTransactions);
-r.post('/wallet/topup', topupWallet);
 r.post('/wallet/topup/mpesa', initiateMpesaTopup);  // M-Pesa STK push
 r.post('/wallet/topup/card',  initiateCardTopup);    // Card via Paystack popup
 r.post('/wallet/topup/verify', verifyMpesaTopup);   // poll/verify
-r.get('/wallet/transactions', getTransactions);
 r.post('/wallet/withdraw', withdrawWallet);
 
 // Cart

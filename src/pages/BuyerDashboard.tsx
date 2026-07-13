@@ -20,6 +20,15 @@ interface CartItem {
   product: { id: string; title: string; price: number; campus: string; images: { url: string }[]; stock: number };
 }
 interface CartData { id: string; items: CartItem[]; subtotal: number; deliveryFee: number; total: number; }
+interface Address {
+  id: string;
+  label: string;
+  hostelName?: string | null;
+  roomNumber?: string | null;
+  campus?: string | null;
+  deliveryInstructions?: string | null;
+  isDefault: boolean;
+}
 
 export default function BuyerDashboard() {
   const { user, logout, refresh } = useAuth();
@@ -30,6 +39,8 @@ export default function BuyerDashboard() {
   const [orders,        setOrders]        = useState<Order[]>([]);
   const [wishlist,      setWishlist]      = useState<WishlistItem[]>([]);
   const [cart,          setCart]          = useState<CartData | null>(null);
+  const [addresses,     setAddresses]     = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
   const [unreadNotifs,  setUnreadNotifs]  = useState(0);
   const [activeTab,     setActiveTab]     = useState(searchParams.get('tab') || 'orders');
   const [topupAmount,   setTopupAmount]   = useState('');
@@ -41,6 +52,10 @@ export default function BuyerDashboard() {
   const [orderMsg,      setOrderMsg]      = useState('');
   const [walletModal,   setWalletModal]   = useState(false);
   const [receiptOrder,  setReceiptOrder]  = useState<Order | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addressForm, setAddressForm] = useState({ label: '', hostelName: '', roomNumber: '', campus: '', deliveryInstructions: '', isDefault: false });
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressMsg, setAddressMsg] = useState('');
 
   // Support tickets
   const [supportTickets,   setSupportTickets]   = useState<any[]>([]);
@@ -56,35 +71,24 @@ export default function BuyerDashboard() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [walletRes, ordersRes, wishlistRes, notifRes, cartRes] = await Promise.all([
+      const [walletRes, ordersRes, wishlistRes, notifRes, cartRes, addressesRes] = await Promise.all([
         GET('/api/buyer/wallet'),
         GET('/api/buyer/orders'),
         GET('/api/buyer/wishlist'),
         GET('/api/buyer/notifications'),
         GET('/api/buyer/cart'),
+        GET('/api/buyer/addresses'),
       ]);
       setWallet(walletRes.data);
       setOrders(ordersRes.data.orders);
       setWishlist(wishlistRes.data.items);
       setUnreadNotifs(notifRes.data.unread);
       setCart(cartRes.data);
+      const fetchedAddresses = addressesRes.data.addresses as Address[];
+      setAddresses(fetchedAddresses);
+      setSelectedAddressId(current => current || fetchedAddresses.find(address => address.isDefault)?.id || fetchedAddresses[0]?.id || '');
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  };
-
-  const handleTopup = async () => {
-    const amount = parseFloat(topupAmount);
-    if (!amount || amount <= 0) return;
-    setTopupLoading(true);
-    try {
-      const res = await POST('/api/buyer/wallet/topup', { amount });
-      setTopupMsg(res.message);
-      setTopupAmount('');
-      await refresh();
-      fetchAll();
-      setTimeout(() => setTopupMsg(''), 3000);
-    } catch (err: any) { setTopupMsg(err.message); }
-    finally { setTopupLoading(false); }
   };
 
   const removeFromWishlist = async (productId: string) => {
@@ -125,6 +129,11 @@ export default function BuyerDashboard() {
 
   const placeOrderFromCart = async () => {
     if (!cart || cart.items.length === 0) return;
+    if (!selectedAddressId) {
+      setOrderMsg('Add and select a delivery address before placing your order.');
+      setActiveTab('addresses');
+      return;
+    }
     if ((user?.walletBalance ?? 0) < (cart?.total ?? 0)) {
       setOrderMsg('Insufficient wallet balance. Please top up first.'); return;
     }
@@ -133,6 +142,7 @@ export default function BuyerDashboard() {
     try {
       await POST('/api/buyer/orders', {
         items: cart.items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        addressId: selectedAddressId,
         paymentMethod: 'WALLET',
       });
       await DEL('/api/buyer/cart');
@@ -142,6 +152,50 @@ export default function BuyerDashboard() {
       setOrderMsg('');
     } catch (err: any) { setOrderMsg(err.message || 'Failed to place order'); }
     finally { setPlacingOrder(false); }
+  };
+
+  const saveAddress = async () => {
+    if (!addressForm.label.trim()) return setAddressMsg('Give this address a label, such as Hostel or Home.');
+    setAddressSaving(true);
+    setAddressMsg('');
+    try {
+      const response = await POST('/api/buyer/addresses', {
+        ...addressForm,
+        campus: addressForm.campus.trim() || undefined,
+        hostelName: addressForm.hostelName.trim() || undefined,
+        roomNumber: addressForm.roomNumber.trim() || undefined,
+        deliveryInstructions: addressForm.deliveryInstructions.trim() || undefined,
+      });
+      const address = response.data.address as Address;
+      setAddresses(current => [address, ...current.filter(item => !address.isDefault || !item.isDefault)]);
+      setSelectedAddressId(address.id);
+      setAddressForm({ label: '', hostelName: '', roomNumber: '', campus: '', deliveryInstructions: '', isDefault: false });
+      setShowAddressForm(false);
+    } catch (error: any) {
+      setAddressMsg(error.message || 'Could not save address.');
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  const setDefaultAddress = async (address: Address) => {
+    try {
+      await PUT(`/api/buyer/addresses/${address.id}`, { isDefault: true });
+      setAddresses(current => current.map(item => ({ ...item, isDefault: item.id === address.id })));
+      setSelectedAddressId(address.id);
+    } catch (error: any) {
+      setAddressMsg(error.message || 'Could not update the default address.');
+    }
+  };
+
+  const deleteAddress = async (id: string) => {
+    try {
+      await DEL(`/api/buyer/addresses/${id}`);
+      setAddresses(current => current.filter(address => address.id !== id));
+      setSelectedAddressId(current => current === id ? '' : current);
+    } catch (error: any) {
+      setAddressMsg(error.message || 'Could not delete address.');
+    }
   };
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -434,6 +488,22 @@ export default function BuyerDashboard() {
                   {/* Order summary */}
                   <div className="bg-pink-50 border border-pink-200 rounded-2xl p-5 mt-2">
                     <h3 className="font-bold mb-4">Order Summary</h3>
+                    <div className="mb-4 rounded-xl border border-pink-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <p className="text-sm font-semibold text-gray-800">Delivery address</p>
+                        <button onClick={() => setActiveTab('addresses')} className="text-xs font-bold text-pink-600 hover:text-pink-700">Manage addresses</button>
+                      </div>
+                      {addresses.length === 0 ? (
+                        <p className="text-xs text-orange-600">Add an address before placing this order.</p>
+                      ) : (
+                        <select value={selectedAddressId} onChange={event => setSelectedAddressId(event.target.value)} className="w-full rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
+                          <option value="">Choose a delivery address</option>
+                          {addresses.map(address => (
+                            <option key={address.id} value={address.id}>{address.label}{address.hostelName ? ` — ${address.hostelName}` : ''}{address.roomNumber ? `, ${address.roomNumber}` : ''}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                     <div className="space-y-2 text-sm mb-4">
                       <div className="flex justify-between text-gray-600">
                         <span>Subtotal</span>
@@ -465,7 +535,7 @@ export default function BuyerDashboard() {
                       </p>
                     )}
 
-                    <button onClick={placeOrderFromCart} disabled={placingOrder || cart.items.length === 0 || (user?.walletBalance ?? 0) < cart.total}
+                    <button onClick={placeOrderFromCart} disabled={placingOrder || cart.items.length === 0 || !selectedAddressId || (user?.walletBalance ?? 0) < cart.total}
                       className="w-full bg-pink-500 text-white font-bold py-3 rounded-xl hover:bg-pink-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                       {placingOrder ? <><RefreshCw className="w-4 h-4 animate-spin" /> Placing Order...</> : <><ShoppingCart className="w-4 h-4" /> Place Order · KSH {cart.total.toLocaleString()}</>}
                     </button>
@@ -476,6 +546,65 @@ export default function BuyerDashboard() {
           )}
 
           {/* ── TRANSACTIONS ── */}
+          {activeTab === 'addresses' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Delivery Addresses</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Choose where sellers should deliver your orders.</p>
+                </div>
+                <button onClick={() => { setAddressMsg(''); setShowAddressForm(current => !current); }} className="flex items-center gap-1.5 bg-pink-500 text-white text-sm font-bold px-3 py-2 rounded-xl hover:bg-pink-600 transition-colors">
+                  <Plus className="w-4 h-4" /> Add address
+                </button>
+              </div>
+
+              {showAddressForm && (
+                <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4 space-y-3">
+                  <h3 className="font-semibold text-sm">New delivery address</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input value={addressForm.label} onChange={event => setAddressForm(current => ({ ...current, label: event.target.value }))} placeholder="Label (e.g. Main hostel)" className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-pink-400" />
+                    <input value={addressForm.campus} onChange={event => setAddressForm(current => ({ ...current, campus: event.target.value }))} placeholder="Campus" className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-pink-400" />
+                    <input value={addressForm.hostelName} onChange={event => setAddressForm(current => ({ ...current, hostelName: event.target.value }))} placeholder="Hostel or building" className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-pink-400" />
+                    <input value={addressForm.roomNumber} onChange={event => setAddressForm(current => ({ ...current, roomNumber: event.target.value }))} placeholder="Room / unit number" className="rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-pink-400" />
+                  </div>
+                  <textarea value={addressForm.deliveryInstructions} onChange={event => setAddressForm(current => ({ ...current, deliveryInstructions: event.target.value }))} placeholder="Delivery instructions (optional)" rows={2} className="w-full rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-pink-400 resize-none" />
+                  <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                    <input type="checkbox" checked={addressForm.isDefault} onChange={event => setAddressForm(current => ({ ...current, isDefault: event.target.checked }))} /> Set as my default delivery address
+                  </label>
+                  {addressMsg && <p className="text-xs text-red-500">{addressMsg}</p>}
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setShowAddressForm(false)} className="px-3 py-2 text-sm font-semibold text-gray-600">Cancel</button>
+                    <button onClick={saveAddress} disabled={addressSaving} className="px-4 py-2 rounded-xl bg-pink-500 text-white text-sm font-bold disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button>
+                  </div>
+                </div>
+              )}
+
+              {addresses.length === 0 ? (
+                <div className="bg-pink-50 border border-pink-200 rounded-2xl p-10 text-center">
+                  <MapPin className="w-10 h-10 text-pink-200 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">No saved delivery addresses yet.</p>
+                </div>
+              ) : addresses.map(address => (
+                <div key={address.id} className={`rounded-2xl border p-4 ${selectedAddressId === address.id ? 'border-pink-400 bg-pink-50' : 'border-pink-200 bg-white'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <button onClick={() => setSelectedAddressId(address.id)} className="flex items-start gap-3 text-left flex-1">
+                      <span className={`mt-0.5 w-4 h-4 rounded-full border-2 ${selectedAddressId === address.id ? 'border-pink-500 bg-pink-500 shadow-[inset_0_0_0_3px_white]' : 'border-gray-300'}`} />
+                      <span>
+                        <span className="flex items-center gap-2"><span className="font-semibold text-sm">{address.label}</span>{address.isDefault && <span className="text-[10px] font-bold text-pink-600 bg-pink-100 px-1.5 py-0.5 rounded-full">DEFAULT</span>}</span>
+                        <span className="block text-xs text-gray-500 mt-1">{[address.roomNumber, address.hostelName, address.campus].filter(Boolean).join(' · ') || 'No location details added'}</span>
+                        {address.deliveryInstructions && <span className="block text-xs text-gray-400 mt-1">{address.deliveryInstructions}</span>}
+                      </span>
+                    </button>
+                    <div className="flex gap-2 text-xs font-semibold">
+                      {!address.isDefault && <button onClick={() => setDefaultAddress(address)} className="text-pink-600 hover:text-pink-700">Default</button>}
+                      <button onClick={() => deleteAddress(address.id)} className="text-red-500 hover:text-red-600">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {activeTab === 'transactions' && (
             <>
               <h2 className="text-lg font-bold">Wallet Transactions</h2>
